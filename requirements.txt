@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+openai
+graphviz
+pydantic
+python-dotenv
