@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Assistance | Empathy at Scale</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <nav>
+        <div class="logo">
+            <span class="icon">✣</span> Support Assistance
+        </div>
+        <div class="links">
+            <a href="#">Product</a>
+            <a href="#">Solutions</a>
+            <a href="#" class="btn-black">Get Started</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>Empathy at <span>scale.</span></h1>
+            <p>The AI agent that sees, understands, and solves problems like a human owner would.</p>
+        </section>
+
+        <section class="demo-container">
+            <div class="label">One interaction. Two views.</div>
+            
+            <div class="split-view">
+                <!-- Left: Business Dashboard (Static Mock) -->
+                <div class="card business-dashboard">
+                    <div class="card-header">
+                        <div class="business-info">
+                            <div class="icon-circle black">store</div>
+                            <strong>Loading Company...</strong>
+                        </div>
+                        <span class="badge">Active</span>
+                    </div>
+                    
+                    <div class="activity-feed" id="activity-feed">
+                        <!-- Dynamic Feed Items will appear here -->
+                    </div>
+                    
+                    <h2>Portal</h2>
+            
+                    <div class="company-section">
+                        <label>Active Company</label>
+                        <select id="company-select">
+                            <option value="Standard Policy">Loading...</option>
+                        </select>
+                    </div>
+
+                    <div class="nav-item active">
+                        <span class="material-icons">dashboard</span>
+                        Dashboard
+                    </div>
+
+                    <div class="stats">
+                        <div class="stat-box">
+                            <h3 id="stat-resolution">94%</h3>
+                            <p>Resolution</p>
+                        </div>
+                        <div class="stat-box">
+                            <h3 id="stat-time">1.2s</h3>
+                            <p>Avg Time</p>
+                        </div>
+                        <div class="stat-box">
+                            <h3 id="stat-satisfaction">4.9★</h3>
+                            <p>Satisfaction</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Customer Experience (Interactive Chat) -->
+                <div class="card customer-chat">
+                    <div class="card-header">
+                        <div class="bot-info">
+                            <div class="icon-circle brown">smart_toy</div>
+                            <div class="details">
+                                <strong>Support Assistant</strong>
+                                <span class="status">Online</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-area" id="chat-messages">
+                        <!-- Messages go here -->
+                        <div class="message bot">
+                            <div class="bubble">
+                                Hi there! I'm your Support Assistant. How can I help you today?
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-area">
+                        <input type="file" id="image-upload" hidden accept="image/*">
+                        <button class="icon-btn" onclick="document.getElementById('image-upload').click()">📷</button>
+                        <input type="text" id="user-input" placeholder="Type a message...">
+                        <button class="send-btn" onclick="sendMessage()">→</button>
+                    </div>
+                    <div id="file-preview" class="file-preview hidden"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <script src="/static/script.js"></script>
+</body>
+</html>

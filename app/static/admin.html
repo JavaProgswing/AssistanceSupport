@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        :root {
+            --accent-color: #007bff;
+            --bg-color: #f4f6f8;
+            --text-color: #333;
+            --card-bg: #fff;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: 20px;
+        }
+        .hidden { display: none !important; }
+        
+        /* Login Card */
+        #login-section {
+            max-width: 400px;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            text-align: center;
+            margin: auto;
+        }
+        #login-section h1 { margin-bottom: 25px; color: var(--accent-color); }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+        .btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-small { width: auto; padding: 6px 12px; font-size: 14px; }
+        .btn-decline { background: #dc3545; }
+        .btn-approve { background: #28a745; }
+        
+        /* Dashboard */
+        #dashboard-section {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            align-self: flex-start;
+            margin-top: 50px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .tabs { margin-bottom: 20px; border-bottom: 1px solid #eee; }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+            font-weight: bold;
+        }
+        
+        /* Cards */
+        .card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .card h3 { margin-top: 0; }
+        .status-badge {
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login -->
+    <div id="login-section">
+        <h1 id="login-title">Admin Portal</h1>
+        <p style="color:#666; margin-bottom:20px;">Please sign in to manage claims</p>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn" onclick="login()">Sign In</button>
+        <p id="login-error" style="color: #dc3545; margin-top: 10px; font-size: 14px;"></p>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-section" class="container hidden">
+        <div class="header">
+            <h1 id="company-name" style="margin:0; color:var(--accent-color);">Dashboard</h1>
+            <button class="btn btn-small" style="background:#666;" onclick="logout()">Logout</button>
+        </div>
+        
+        <div class="tabs">
+            <button id="tab-claims" class="tab-btn active" onclick="showTab('claims')">Claims</button>
+            <button id="tab-policy" class="tab-btn" onclick="showTab('policy')">Policy Settings</button>
+        </div>
+
+        <!-- Claims Tab -->
+        <div id="claims-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="margin:0;">Pending Claims</h2>
+                <button class="btn btn-small" onclick="loadClaims()" style="width:auto;">Refresh</button>
+            </div>
+            <div id="claims-list">
+                <p style="text-align:center; color:#999;">Loading claims...</p>
+            </div>
+        </div>
+
+        <!-- Policy Tab -->
+        <div id="policy-section" class="hidden">
+            <h2 style="margin-top:0;">Company Policy</h2>
+            <div class="card" style="background:#f9f9f9;">
+                <p style="margin-top:0;"><strong>AI Instructions:</strong></p>
+                <p style="font-size:14px; color:#555;">Edit your policy below. The AI handles claims based strictly on this text. Be clear about refund conditions.</p>
+                <textarea id="policy-text" rows="12" placeholder="Enter your return policy here..."></textarea>
+                <div style="text-align:right;">
+                    <button class="btn btn-small" onclick="updatePolicy()" style="width:200px;">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let companyId = null;
+        const tagline = window.location.pathname.split('/')[1];
+
+        // --- Init ---
+        window.onload = () => {
+            // Update title based on tagline if present
+            if(tagline && tagline !== 'admin') {
+                document.getElementById('login-title').innerText = tagline.toUpperCase() + " Admin";
+            }
+            checkLogin();
+        };
+
+        // --- Auth ---
+        function checkLogin() {
+            const storedTagline = localStorage.getItem('admin_tagline');
+            const storedToken = localStorage.getItem('admin_company_id'); // Using ID as token for MVP
+            
+            if (storedTagline === tagline && storedToken) {
+                restoreSession();
+            }
+        }
+
+        function restoreSession() {
+            companyId = localStorage.getItem('admin_company_id');
+            const color = localStorage.getItem('admin_color');
+            const name = localStorage.getItem('admin_name');
+            const policy = localStorage.getItem('admin_policy');
+
+            applyTheme(color, name);
+            if(policy) document.getElementById('policy-text').value = policy;
+
+            showDashboard();
+            loadClaims();
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const btn = document.querySelector('#login-section .btn');
+            const err = document.getElementById('login-error');
+            
+            err.innerText = "";
+            btn.innerText = "Signing in...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ tagline, username, password: pass })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Success
+                    localStorage.setItem('admin_tagline', tagline);
+                    localStorage.setItem('admin_username', username);
+                    localStorage.setItem('admin_company_id', data.company_id);
+                    localStorage.setItem('admin_name', data.company_name);
+                    
+                    if(data.banner_color) localStorage.setItem('admin_color', data.banner_color);
+                    if(data.return_policy) localStorage.setItem('admin_policy', data.return_policy);
+
+                    restoreSession();
+                } else {
+                    err.innerText = data.detail || "Invalid credentials";
+                }
+            } catch (e) {
+                console.error(e);
+                err.innerText = "Server connection failed";
+            } finally {
+                btn.innerText = "Sign In";
+                btn.disabled = false;
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        function showDashboard() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.body.style.alignItems = 'flex-start'; // Align dashboard to top
+        }
+
+        function applyTheme(color, name) {
+            if (color) {
+                document.documentElement.style.setProperty('--accent-color', color);
+            }
+            if (name) {
+                document.getElementById('company-name').innerText = name + " Dashboard";
+            }
+        }
+
+        // --- Tabs ---
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if(tabName === 'claims') {
+                document.getElementById('claims-section').classList.remove('hidden');
+                document.getElementById('policy-section').classList.add('hidden');
+            } else {
+                document.getElementById('claims-section').classList.add('hidden');
+                document.getElementById('policy-section').classList.remove('hidden');
+            }
+        }
+
+        // --- Claims Logic ---
+        async function loadClaims() {
+            const list = document.getElementById('claims-list');
+            try {
+                const res = await fetch(`/api/admin/claims?company_id=${companyId}`);
+                if(!res.ok) throw new Error("Failed to load");
+                
+                const data = await res.json();
+                list.innerHTML = "";
+
+                const allClaims = [
+                    ...data.refund_requests.map(r => ({...r, type: 'refund'})),
+                    ...data.escalations.map(e => ({...e, type: 'escalation'})),
+                    ...(data.payout_queue || []).map(p => ({...p, type: 'payout'}))
+                ];
+
+                if (allClaims.length === 0) {
+                    list.innerHTML = `<div style="text-align:center; padding:40px; color:#999;">
+                        <span style="font-size:40px; display:block; margin-bottom:10px;">☕</span>
+                        All caught up! No pending claims or payouts.
+                    </div>`;
+                    return;
+                }
+
+                allClaims.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'card';
+                    
+                    if (item.type === 'refund') {
+                        el.innerHTML = `
+                            <div style="display:flex; justify-content:space-between;">
+                                <h3>Refund Request <span style="font-weight:normal; font-size:14px; color:#666;">(Ref: ${item.transactions?.order_ref || 'Unknown'})</span></h3>
+                                <span class="status-badge">${item.status}</span>
+                            </div>
+                            <p style="margin:10px 0; color:#555;"><strong>AI Analysis:</strong> ${item.ai_analysis_json?.reason || 'No details provided.'}</p>
+                            ${renderImage(item.evidence_image_url)}
+                            ${renderContext(item.user_transcript)}
+                            
+                            <div class="actions">
+                                <button class="btn btn-approve btn-small" onclick="decide('${item.id}', 'refund', 'APPROVED')">Approve Refund</button>
+                                <button class="btn btn-decline btn-small" onclick="toggleDecline('${item.id}')">Decline</button>
+                            </div>
+                            
+                            <div id="decline-${item.id}" class="hidden" style="margin-top:15px; background:#fff5f5; padding:15px; border-radius:6px; border:1px solid #ffcccc;">
+                                <p style="margin-top:0; font-size:14px; font-weight:bold; color:#a00;">Why was this declined?</p>
+                                <textarea id="correction-${item.id}" rows="2" placeholder="E.g. 'Screen cracks are not covered...' (This teaches the AI)"></textarea>
+                                <div style="text-align:right;">
+                                    <button class="btn btn-decline btn-small" onclick="decide('${item.id}', 'refund', 'DECLINED')">Confirm Decline</button>
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'escalation') {
+                        el.innerHTML = `
+                            <div style="display:flex; justify-content:space-between;">
+                                <h3>Escalation Request <span style="font-weight:normal; font-size:14px; color:#666;">(Ref: ${item.transactions?.order_ref || 'Unknown'})</span></h3>
+                                <span class="status-badge" style="background:#fff3cd; color:#856404;">${item.status}</span>
+                            </div>
+                            </div>
+                            <p><strong>Reason:</strong> ${item.reason}</p>
+                            ${renderImage(item.evidence_image_url)}
+                            ${renderContext(item.context)}
+                            
+                            <div class="actions">
+                                <button class="btn btn-approve btn-small" onclick="decide('${item.id}', 'escalation', 'APPROVED')">Mark Resolved</button>
+                                <button class="btn btn-decline btn-small" onclick="decide('${item.id}', 'escalation', 'DECLINED')">Dismiss</button>
+                            </div>
+                        `;
+                    } else if (item.type === 'payout') {
+                        el.innerHTML = `
+                            <div style="display:flex; justify-content:space-between;">
+                                <h3>Refund Approved <span style="font-weight:normal; font-size:14px; color:#666;">(Ref: ${item.transactions?.order_ref || 'Unknown'})</span></h3>
+                                <span class="status-badge" style="background:#d4edda; color:#155724;">Ready for Payout</span>
+                            </div>
+                            <p><strong>Amount:</strong> ${item.amount} ${item.transactions?.currency || 'USD'}</p>
+                            <p style="font-size:12px; color:#666;"><strong>Auto-Reason:</strong> ${item.ai_reason || 'AI Approved'}</p>
+                            ${renderContext(item.context)}
+                            
+                            <div class="actions">
+                                <button class="btn btn-approve btn-small" style="background:#28a745;" onclick="processPayout('${item.id}')">Mark as Paid</button>
+                                <button class="btn btn-decline btn-small" onclick="toggleDecline('${item.id}')">Reject & Correct Policy</button>
+                            </div>
+
+                            <div id="decline-${item.id}" class="hidden" style="margin-top:15px; background:#fff5f5; padding:15px; border-radius:6px; border:1px solid #ffcccc;">
+                                <p style="margin-top:0; font-size:14px; font-weight:bold; color:#a00;">Rejecting AI Decision:</p>
+                                <p style="font-size:12px;">This was auto-approved. Rejecting it will flag the mistake and update policy.</p>
+                                <textarea id="correction-${item.id}" rows="2" placeholder="Why is this invalid? (Updates Policy)"></textarea>
+                                <div style="text-align:right;">
+                                    <button class="btn btn-decline btn-small" onclick="decide('${item.id}', 'payout', 'DECLINED')">Confirm Rejection</button>
+                                </div>
+                            </div>
+                        `; 
+                    }
+                    list.appendChild(el);
+                });
+
+            } catch (e) {
+                console.warn(e);
+                list.innerHTML = `<p style="color:red; text-align:center;">Failed to load claims. <a href="#" onclick="loadClaims()">Retry</a></p>`;
+            }
+        }
+
+        function renderImage(url) {
+            if (!url) return "";
+            return `
+                <div style="margin:10px 0;">
+                    <p style="font-size:12px; font-weight:bold; margin-bottom:5px;">Evidence:</p>
+                    <a href="${url}" target="_blank">
+                        <img src="${url}" style="max-width:150px; border-radius:6px; border:1px solid #ddd; cursor:pointer;" alt="Claim Evidence">
+                    </a>
+                </div>
+            `;
+        }
+
+        function renderContext(text) {
+            if (!text) return "";
+            // Remove JSON block
+            let cleanText = text.replace(/```json[\s\S]*?```/g, "").trim();
+            // Simple formatting for chat log
+            const safeText = cleanText.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+            return `
+                <div style="margin:10px 0; background:#f0f0f0; padding:10px; border-radius:5px; font-size:13px; max-height:150px; overflow-y:auto;">
+                    <strong>Chat Context:</strong><br>
+                    ${safeText}
+                </div>
+            `;
+        }
+
+        async function processPayout(id) {
+             await decide(id, 'payout', 'APPROVED'); 
+        }
+
+        function toggleDecline(id) {
+            const el = document.getElementById(`decline-${id}`);
+            if(el.classList.contains('hidden')) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+
+        async function decide(id, type, decision) {
+            const correctionEl = document.getElementById(`correction-${id}`);
+            const correction = correctionEl ? correctionEl.value : null;
+
+            // Simple optimistic UI update could go here, but let's just reload
+            try {
+                await fetch('/api/admin/claims/decide', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        claim_id: id,
+                        claim_type: type,
+                        decision: decision,
+                        correction: correction,
+                        company_id: companyId,
+                        issue_context: correction ? "Admin Overruled AI" : null
+                    })
+                });
+                loadClaims(); // Reload list
+            } catch(e) {
+                alert("Action failed");
+            }
+        }
+
+        async function updatePolicy() {
+            const text = document.getElementById('policy-text').value;
+            try {
+                const res = await fetch(`/api/company/${companyId}/policy`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ policy: text })
+                });
+                if(res.ok) {
+                    alert("Policy updated successfully!");
+                    localStorage.setItem('admin_policy', text); // Update local cache
+                } else {
+                    alert("Update failed.");
+                }
+            } catch(e) {
+                alert("Network error.");
+            }
+        }
+    </script>
+</body>
+</html>
