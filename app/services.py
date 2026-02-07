@@ -9,7 +9,8 @@ import base64
 from io import BytesIO
 import qrcode
 import PIL.Image
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from passlib.context import CryptContext
@@ -20,10 +21,11 @@ deployment_url = "http://127.0.0.1:8000"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-GEMINI_MODEL_NAME = "models/gemma-3-12b-it"
+GEMINI_MODEL_NAME = "gemini-2.0-flash-exp" # Updated default
 
+client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
 supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
@@ -275,7 +277,7 @@ def update_company_policy(company_id: str, new_policy: str):
 
 async def refine_policy_with_gemini(company_id: str, issue_context: str, correction_feedback: str, current_policy: str):
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL_NAME)
+        if not client: return current_policy
         prompt = f"""
         Current Policy: {current_policy}
         Issue Context: {issue_context}
@@ -283,18 +285,28 @@ async def refine_policy_with_gemini(company_id: str, issue_context: str, correct
         
         TASK: Rewrite policy to incorporate feedback. Keep it professional. Output NEW POLICY text only.
         """
-        new_policy = model.generate_content(prompt).text.strip()
+        response = client.models.generate_content(
+            model=GEMINI_MODEL_NAME,
+            contents=prompt
+        )
+        new_policy = response.text.strip()
         update_company_policy(company_id, new_policy)
         return new_policy
     except Exception: return current_policy
 
 def analyze_image(file_path: str):
     try:
-        model = genai.GenerativeModel('models/gemini-flash-latest')
+        if not client: return "API Key Config Error"
+        # Opening image using PIL
         img = PIL.Image.open(file_path)
         prompt = "Analyze this image. 1. Is it REAL? If not, say 'Verification Failed'. 2. If real, describe damage."
-        return model.generate_content([prompt, img]).text
-    except Exception: return "Image analysis failed."
+        
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=[prompt, img]
+        )
+        return response.text
+    except Exception as e: return f"Image analysis failed: {e}"
 
 # ... signature update ...
 async def chat_with_agent(message: str, history: list = None, image_analysis: str = None, company_policy: str = "Standard Policy", customer_id: str = None, evidence_image_url: str = None):
@@ -329,15 +341,23 @@ async def chat_with_agent(message: str, history: list = None, image_analysis: st
              system_injection += f"\n[SYSTEM]: Tx {potential_id} NOT FOUND."
 
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL_NAME)
-        chat_history = [{"role": m["role"] if m["role"]=="user" else "model", "parts": [m["content"]]} for m in (history or [])]
+        if not client: return "API Key Configuration Error"
+
+        # Transform history
+        formatted_history = []
+        if history:
+             for m in history:
+                 role = m["role"] if m["role"] == "user" else "model"
+                 formatted_history.append(types.Content(role=role, parts=[types.Part(text=m["content"])]))
         
         full_sys_prompt = f"{BASE_SYSTEM_PROMPT}\n\nCURRENT POLICY:\n{company_policy}"
         user_content = message
         if image_analysis: user_content += f"\n\n[IMAGE ANALYSIS]: {image_analysis}"
         if system_injection: user_content += system_injection
         
-        reply = model.start_chat(history=chat_history).send_message(f"{full_sys_prompt}\n\nUser: {user_content}").text.strip()
+        chat = client.chats.create(model=GEMINI_MODEL_NAME, history=formatted_history)
+        response = chat.send_message(f"{full_sys_prompt}\n\nUser: {user_content}")
+        reply = response.text.strip()
         
         # Prepare Transcript Summary
         # Strip JSON from reply for the transcript (Handle both Code Block and raw JSON at end)

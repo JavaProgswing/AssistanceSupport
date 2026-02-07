@@ -2,7 +2,7 @@ fastapi
 uvicorn
 python-multipart
 python-dotenv
-google-generativeai
+google-genai
 requests
 supabase
 qrcode

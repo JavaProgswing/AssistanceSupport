@@ -291,7 +291,11 @@ async def upload_image(file: UploadFile = File(...), message: str = Form(...), c
 # ... (other code)
 
 # Mount Static Files (Frontend)
+# Mount Static Files (Frontend)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Ensure temp_uploads exists before mounting
+os.makedirs("temp_uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="temp_uploads"), name="uploads")
 
 @app.get("/register")
