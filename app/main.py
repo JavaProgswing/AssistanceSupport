@@ -208,7 +208,7 @@ async def upload_image(file: UploadFile = File(...), message: str = Form(...), c
     Handle image upload and immediate analysis/chat
     """
     # Save temp file
-    temp_dir = "temp_uploads"
+    temp_dir = "/tmp/uploads"
     os.makedirs(temp_dir, exist_ok=True)
     file_path = f"{temp_dir}/{file.filename}"
     
@@ -295,8 +295,10 @@ async def upload_image(file: UploadFile = File(...), message: str = Form(...), c
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Ensure temp_uploads exists before mounting
-os.makedirs("temp_uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="temp_uploads"), name="uploads")
+# Use /tmp for Vercel
+upload_dir = "/tmp/uploads"
+os.makedirs(upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 @app.get("/register")
 async def register_page():
