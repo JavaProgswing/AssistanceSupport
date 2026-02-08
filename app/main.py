@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Response, Request, status
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
@@ -107,10 +107,20 @@ async def get_company_details(tagline: str):
     return data
 
 @app.post("/api/admin/login")
-async def admin_login(req: AdminLoginRequest):
+async def admin_login(req: AdminLoginRequest, response: Response):
     user = login_admin(req.tagline, req.username, req.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Set cookie for server-side validation
+    response.set_cookie(
+        key="admin_tagline", 
+        value=user['tagline'], 
+        httponly=True, 
+        max_age=86400,
+        samesite="lax"
+    )
+
     return {
         "status": "success",
         "company_id": user['id'],
@@ -286,34 +296,57 @@ async def upload_image(file: UploadFile = File(...), message: str = Form(...), c
         "filename": file.filename
     }
 
-# ... (imports moved to top)
-
-# ... (other code)
-
-# Mount Static Files (Frontend)
-# Mount Static Files (Frontend)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-# Ensure temp_uploads exists before mounting
 # Use /tmp for Vercel
 upload_dir = "/tmp/uploads"
 os.makedirs(upload_dir, exist_ok=True)
+
+# Mount Static Files (Frontend)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
-@app.get("/register")
-async def register_page():
-    return FileResponse("app/static/register.html")
+# Mount Flutter App Static Directories
+app.mount("/assets", StaticFiles(directory="assistance_web/assets"), name="flutter_assets")
+app.mount("/canvaskit", StaticFiles(directory="assistance_web/canvaskit"), name="flutter_canvaskit")
+app.mount("/icons", StaticFiles(directory="assistance_web/icons"), name="flutter_icons")
+
 
 @app.get("/{tagline}/admin")
-async def company_admin(tagline: str):
+async def company_admin(tagline: str, request: Request):
+    # 1. Check if company exists
+    company = get_company_by_tagline(tagline)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    # 2. Check Auth (Cookie)
+    # If cookie is present BUT belongs to another company -> 401
+    # If cookie is missing -> Allow (Client will show login form)
+    cookie_tagline = request.cookies.get("admin_tagline")
+    
+    if cookie_tagline and cookie_tagline != tagline:
+        # User is logged in as someone else
+        raise HTTPException(status_code=401, detail="You are logged in to another company. Please logout first.")
+        
     return FileResponse("app/static/admin.html")
 
-@app.get("/{tagline}")
-async def company_index(tagline: str):
-    return FileResponse("app/static/index.html")
-
-# Root redirects to a default or landing? 
-# For now, let's keep root serving index.html as a "platform" or default.
 @app.get("/")
 async def root():
-    return FileResponse("app/static/landing.html")
+    return FileResponse("assistance_web/index.html")
+
+@app.get("/{path_name}")
+async def dynamic_route(path_name: str):
+    # 1. Check for Flutter web root files (e.g. flutter.js, manifest.json)
+    # Security: Ensure path_name doesn't contain traversal characters (basic check)
+    if ".." in path_name or "/" in path_name:
+         # Fallback to company handling or 404
+         pass
+    else:
+        potential_file = os.path.join("assistance_web", path_name)
+        if os.path.isfile(potential_file):
+            return FileResponse(potential_file)
+
+    # 2. Otherwise assume it is a company tagline
+    if get_company_by_tagline(path_name):
+        return FileResponse("app/static/index.html")
+    
+    # 3. If neither, it's a 404
+    raise HTTPException(status_code=404, detail="Not Found")

@@ -17,7 +17,7 @@ from passlib.context import CryptContext
 
 # --- Config ---
 load_dotenv()
-deployment_url = "https://assistance-pi.vercel.app/"
+deployment_url = "https://assistance-pi.vercel.app"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
