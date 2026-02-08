@@ -21,12 +21,11 @@ deployment_url = "https://assistance-pi.vercel.app/"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-GEMINI_MODEL_NAME = "gemini-2.0-flash-exp"  # Updated default
-
 client = None
 if GEMINI_API_KEY:
     client = genai.Client(api_key=GEMINI_API_KEY)
 
+GEMINI_MODEL_NAME = "gemini-3-flash-preview"
 supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
     try:
@@ -424,7 +423,7 @@ def analyze_image(file_path: str):
         prompt = "Analyze this image. 1. Is it REAL? If not, say 'Verification Failed'. 2. If real, describe damage."
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp", contents=[prompt, img]
+            model=GEMINI_MODEL_NAME, contents=[prompt, img]
         )
         return response.text
     except Exception as e:
