@@ -43,7 +43,7 @@ let companyId = null;
 let tagline = window.location.pathname.split('/')[1];
 
 async function loadCompanyContext() {
-    if (!tagline || tagline === 'index.html') {
+    if (!tagline || tagline === 'index.html' || tagline === 'static') {
         // Fallback or Landing Page logic
         console.log("No company context");
         return;
