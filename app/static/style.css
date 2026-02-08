@@ -329,6 +329,7 @@ nav {
     flex: 1;
     border: none;
     background: transparent;
+    color: var(--text-primary);
     padding: 0.5rem;
     outline: none;
     font-family: inherit;
