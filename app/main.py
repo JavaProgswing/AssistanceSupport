@@ -24,26 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- WebSocket Manager ---
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except:
-                pass
-
-manager = ConnectionManager()
+# --- WebSocket Manager Removed for Vercel State ---
+# WebSockets are not reliable in serverless Vercel functions for this simple demo.
+# We will return state updates in the HTTP response instead.
 
 # Models
 class ChatRequest(BaseModel):
@@ -58,6 +41,8 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     action: Optional[dict] = None
+    stats: Optional[dict] = None
+    events: Optional[List[dict]] = None
 
 class RegisterRequest(BaseModel):
     name: str
@@ -173,14 +158,7 @@ async def decide_claim(req: DecisionRequest):
 
     return {"status": "success"}
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            await websocket.receive_text() # Keep connection alive
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+# WebSocket endpoint removed
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(req: ChatRequest):
@@ -205,21 +183,21 @@ async def chat_endpoint(req: ChatRequest):
         except:
             pass
 
-    # Broadcast Dashboard Updates
+    # Dashboard Updates
     events = get_dashboard_update(action_json=action_data)
-    for event in events:
-        await manager.broadcast(event)
         
-    # Broadcast Stats Update
-    await manager.broadcast({
-        "type": "stats",
-        "data": stats_manager.get_stats()
-    })
+    # Stats Update
+    stats = stats_manager.get_stats()
 
-    return {"reply": reply_text, "action": action_data}
+    return {
+        "reply": reply_text, 
+        "action": action_data,
+        "stats": stats,
+        "events": events
+    }
 
 @app.post("/api/upload")
-async def upload_image(file: UploadFile = File(...), message: str = Form(...), company_policy: str = Form("Standard Policy")):
+async def upload_image(file: UploadFile = File(...), message: str = Form(...), company_policy: str = Form("Standard Policy"), company_id: Optional[str] = Form(None)):
     """
     Handle image upload and immediate analysis/chat
     """
@@ -238,29 +216,20 @@ async def upload_image(file: UploadFile = File(...), message: str = Form(...), c
     is_rejected = "Verification Failed" in analysis_result
     
     if is_rejected:
-         await manager.broadcast({
+        return {
+            "reply": "Verification Failed: The image appears to be digital or AI-generated. Please upload a real photo taken with a camera.",
+            "analysis": analysis_result,
+            "filename": file.filename,
+            "stats": None,
+            "events": [{
             "type": "event",
             "icon": "block",
             "title": "Image Rejected",
             "time": "Now",
             "subtitle": "Fake/Digital image detected"
-        })
-         # STOP HERE - Return rejection without chatting
-         return {
-             "reply": "Verification Failed: The image appears to be digital or AI-generated. Please upload a real photo taken with a camera.",
-             "analysis": analysis_result,
-             "filename": file.filename
-         }
+            }]
+        }
 
-    # If passed verification:
-    await manager.broadcast({
-        "type": "event",
-        "icon": "image",
-        "title": "Image Analyzed",
-        "time": "Now",
-        "subtitle": "Gemini has processed the image"
-    })
-    
     # Construct accessible URL
     file_url = f"/uploads/{file.filename}"
     
@@ -269,7 +238,8 @@ async def upload_image(file: UploadFile = File(...), message: str = Form(...), c
         message, 
         image_analysis=analysis_result, 
         company_policy=company_policy,
-        evidence_image_url=file_url
+        evidence_image_url=file_url,
+        company_id=company_id
     )
     
     # Parse Action
@@ -282,24 +252,30 @@ async def upload_image(file: UploadFile = File(...), message: str = Form(...), c
             reply_text = raw_reply.split("```json")[0].strip()
         except:
             pass
-            
-    # Broadcast Policy Events if action taken
+
+    # Action Events
+    events = []
     if action_data:
         events = get_dashboard_update(action_json=action_data)
-        for event in events:
-            if event["icon"] != "image" and event["icon"] != "block": 
-                await manager.broadcast(event)
                 
-    # Broadcast Stats Update
-    await manager.broadcast({
-        "type": "stats",
-        "data": stats_manager.get_stats()
+    # Image Analysis Event (Always happened if we are here)
+    events.insert(0, {
+        "type": "event",
+        "icon": "image",
+        "title": "Image Analyzed",
+        "time": "Now",
+        "subtitle": "Gemini has processed the image"
     })
+
+    # Stats Update
+    stats = stats_manager.get_stats()
     
     return {
         "reply": reply_text,
         "analysis": analysis_result,
-        "filename": file.filename
+        "filename": file.filename,
+        "stats": stats,
+        "events": events
     }
 
 # Use /tmp for Vercel

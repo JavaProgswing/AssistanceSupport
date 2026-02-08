@@ -1,11 +1,28 @@
 :root {
-    --bg-color: #FDFBF7; /* Creamy off-white */
-    --text-primary: #1A1A1A;
-    --text-secondary: #666;
-    --accent-brown: #A05E2B; /* Matching the 'scale' color */
-    --surface-white: #FFFFFF;
-    --border-color: #E5E5E5;
-    --shadow: 0 4px 20px rgba(0,0,0,0.05);
+    --bg-color: #FFFFFF;
+    --surface-color: #FFFFFF;
+    --surface-hover: #F9F9F9;
+    --input-bg: #F9F9F9;
+    --text-primary: #111111;
+    --text-secondary: #555555;
+    --border-color: #EEEEEE;
+    --shadow: 0 8px 30px rgba(0,0,0,0.04);
+    
+    /* Dynamic Brand Color (Default Brown) */
+    --accent-brown: #A05E2B;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #121212;
+        --surface-color: #1E1E1E;
+        --surface-hover: #2C2C2C;
+        --input-bg: #2C2C2C;
+        --text-primary: #EDEADE; /* Soft white */
+        --text-secondary: #A0A0A0;
+        --border-color: #333333;
+        --shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
 }
 
 * {
@@ -112,7 +129,7 @@ nav {
 
 /* Cards */
 .card {
-    background: var(--surface-white);
+    background: var(--surface-color);
     border-radius: 1.5rem;
     padding: 1.5rem;
     box-shadow: var(--shadow);
@@ -120,6 +137,19 @@ nav {
     height: 600px;
     display: flex;
     flex-direction: column;
+}
+
+.hero-card {
+    height: auto;
+    max-width: 800px;
+    margin: 4rem auto;
+    align-items: center;
+    background: var(--surface-color);
+    padding: 4rem 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+    border-radius: 2rem;
+    text-align: center;
 }
 
 .card-header {
@@ -169,7 +199,7 @@ nav {
     padding: 0.6rem;
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
-    background: #FAFAFA;
+    background: var(--input-bg);
     font-family: inherit;
     font-size: 0.9rem;
     color: var(--text-primary);
@@ -196,13 +226,13 @@ nav {
 }
 
 .nav-item.active {
-    background: #F0F0F0;
+    background: var(--surface-hover);
     color: var(--text-primary);
     font-weight: 600;
 }
 
 .nav-item:hover {
-    background: #FAFAFA;
+    background: var(--surface-hover);
 }
 
 .icon-circle.black { background: #1A1A1A; color: white; }
@@ -273,7 +303,7 @@ nav {
 }
 
 .message.bot .bubble {
-    background: #F5F5F5;
+    background: var(--input-bg);
     color: var(--text-primary);
     border-bottom-left-radius: 0.2rem;
 }
@@ -289,7 +319,7 @@ nav {
     display: flex;
     gap: 0.5rem;
     align-items: center;
-    background: #F9F9F9; /* Pill shape container */
+    background: var(--input-bg); /* Pill shape container */
     padding: 0.5rem;
     border-radius: 2rem;
     border: 1px solid var(--border-color);
@@ -321,7 +351,7 @@ nav {
 }
 
 .icon-btn { background: transparent; color: #666; }
-.icon-btn:hover { background: #E5E5E5; }
+.icon-btn:hover { background: var(--surface-hover); }
 
 .send-btn {
     background: #1A1A1A;

@@ -533,6 +533,7 @@ async def chat_with_agent(
             )
 
         # Action Handling
+        json_match = re.search(r"```json([\s\S]*?)```", reply, re.IGNORECASE)
         action_type = None
         if json_match:
             try:

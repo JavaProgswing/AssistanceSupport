@@ -5,72 +5,18 @@ const activityFeed = document.getElementById('activity-feed');
 
 let chatHistory = []; 
 
-// --- WebSocket Setup ---
-const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const wsUrl = `${protocol}//${window.location.host}/ws`;
-let socket;
-let reconnectInterval = 5000; // 5 seconds
+// --- WebSocket Setup Removed ---
+// Vercel serverless environment doesn't support persistent WS connections well.
+// We now get updates via the HTTP response.
 
-function connectWebSocket() {
-    socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-        console.log("Connected to Real-time Dashboard");
-        // Reset empty state if it was in error mode
-        const emptyState = document.querySelector('.empty-state');
-        if (emptyState) {
-            emptyState.style.display = 'block'; // Ensure it's visible if feed is empty (logic elsewhere might hide it)
-            emptyState.innerHTML = `
-                <span class="material-icons" style="font-size: 48px; margin-bottom: 10px; display: block;">hourglass_empty</span>
-                Waiting for activity...
-            `;
-             // If there are items, hide it immediately
-             if (activityFeed.children.length > 1) { // 1 because of the hidden empty-state div itself? No, empty-state is child.
-                 // Actually, let's just leave it as standard "Waiting" and relies on addFeedItem to hide it if needed.
-                 // But if we are reconnecting, we might already have items.
-                 // So we should only show empty state if there are NO feed items (excluding the empty-state div itself if it's in there).
-                 const feedItems = activityFeed.querySelectorAll('.feed-item');
-                 if (feedItems.length > 0) {
-                     emptyState.style.display = 'none';
-                 }
-            }
-        }
-    };
-
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'event') {
-            addFeedItem(data);
-        } else if (data.type === 'stats') {
-            updateStats(data.data);
-        }
-    };
-
-    socket.onclose = (e) => {
-        console.log("Disconnected from Dashboard. Reconnecting in " + reconnectInterval/1000 + "s...", e);
-        handleConnectionError();
-        setTimeout(connectWebSocket, reconnectInterval);
-    };
-
-    socket.onerror = (err) => {
-        console.error("WebSocket encountered error: ", err, "Closing socket");
-        socket.close();
-    };
-}
-
-function handleConnectionError() {
-    const emptyState = document.querySelector('.empty-state');
-    if (emptyState) {
-        emptyState.style.display = 'block';
-        emptyState.style.color = '#d32f2f'; // Red color for error
-        emptyState.innerHTML = `
-            <span class="material-icons" style="font-size: 48px; margin-bottom: 10px; display: block;">error_outline</span>
-            Connection failed. Retrying...
-        `;
+function handleResponseUpdates(data) {
+    if (data.events && Array.isArray(data.events)) {
+        data.events.forEach(event => addFeedItem(event));
+    }
+    if (data.stats) {
+        updateStats(data.stats);
     }
 }
-
-connectWebSocket();
 
 function updateStats(stats) {
     if (document.getElementById('stat-resolution')) 
@@ -100,6 +46,8 @@ async function loadCompanyContext() {
         
         // Apply Branding
         document.title = `${company.name} Support`;
+        const brandNameEl = document.getElementById('brand-name');
+        if (brandNameEl) brandNameEl.innerText = company.name;
         
         if (company.banner_color) {
             document.documentElement.style.setProperty('--accent-brown', company.banner_color);
@@ -156,6 +104,9 @@ async function sendMessage() {
         chatHistory.push({ role: "user", content: text });
         chatHistory.push({ role: "model", content: data.reply });
         
+        // Update Dashboard
+        handleResponseUpdates(data);
+        
     } catch (error) {
         removeMessage(loadingId);
         console.error("Chat Error:", error);
@@ -191,6 +142,9 @@ fileInput.addEventListener('change', async (e) => {
         
         chatHistory.push({ role: "user", content: "I have uploaded an image of the issue." });
         chatHistory.push({ role: "model", content: data.reply });
+        
+        // Update Dashboard
+        handleResponseUpdates(data);
         
         // Clear input so same file can be selected again
         fileInput.value = '';
