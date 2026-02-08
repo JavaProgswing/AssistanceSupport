@@ -189,7 +189,8 @@ async def chat_endpoint(req: ChatRequest):
         image_analysis=req.image_analysis, 
         company_policy=req.company_policy, 
         customer_id=req.customer_id,
-        evidence_image_url=req.evidence_image_url
+        evidence_image_url=req.evidence_image_url,
+        company_id=req.company_id
     )
     
     # Extract JSON action if present

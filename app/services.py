@@ -116,10 +116,24 @@ def get_companies():
     return db_select("companies", select="id, name, return_policy")
 
 
-def verify_transaction(order_ref: str):
+def verify_transaction(order_ref: str, company_id: str = None):
     clean_ref = order_ref.replace("#", "").strip()
-    res = db_select("transactions", "order_ref_ilike", clean_ref)
-    return res[0] if res else None
+    
+    # Base query
+    q = supabase.table("transactions").select("*")
+    
+    # Filter by order ref
+    q = q.ilike("order_ref", clean_ref)
+    
+    # Filter by company_id if provided
+    if company_id:
+        q = q.eq("company_id", company_id)
+        
+    try:
+        res = q.execute().data
+        return res[0] if res else None
+    except Exception:
+        return None
 
 
 def check_existing_claim(transaction_id: str):
@@ -438,30 +452,19 @@ async def chat_with_agent(
     company_policy: str = "Standard Policy",
     customer_id: str = None,
     evidence_image_url: str = None,
+    company_id: str = None,
 ):
-    start_time = time.time()
-    # ... (rest of function until action handling) ...
-
-    # I need to match the original content carefully to avoid deleting logic.
-    # The tool requires StartLine/EndLine.
-    # Ideally I should read lines first to be precise, but I know the structure.
-    # I will target the arguments and later the create_claim call.
-
-    # WAIT: I can't easily replace just the signature and a call deep inside without viewing.
-    # I will replace the signature FIRST.
-
     start_time = time.time()
     system_injection = ""
 
-    # ... (Regex logic same as before) ...
-    # Re-implementing lightly to ensure completeness in replacement
-
+    # Check for Transaction ID / Order Ref in message
     match = re.search(
         r"(?:#|order\s+id\s*[:#]?\s*)?([A-Za-z0-9\-]+)", message, re.IGNORECASE
     )
     if match and len(match.group(1)) > 3:
         potential_id = match.group(1)
-        tx = verify_transaction(potential_id)
+        # Verify transaction with company context
+        tx = verify_transaction(potential_id, company_id)
         if tx:
             existing = check_existing_claim(tx["id"])
             if existing:
