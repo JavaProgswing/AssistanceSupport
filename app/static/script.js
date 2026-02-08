@@ -4,29 +4,73 @@ const fileInput = document.getElementById('image-upload');
 const activityFeed = document.getElementById('activity-feed');
 
 let chatHistory = []; 
-let currentPolicy = "Standard Policy";
 
 // --- WebSocket Setup ---
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const wsUrl = `${protocol}//${window.location.host}/ws`;
-let socket = new WebSocket(wsUrl);
+let socket;
+let reconnectInterval = 5000; // 5 seconds
 
-socket.onopen = () => {
-    console.log("Connected to Real-time Dashboard");
-};
+function connectWebSocket() {
+    socket = new WebSocket(wsUrl);
 
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === 'event') {
-        addFeedItem(data);
-    } else if (data.type === 'stats') {
-        updateStats(data.data);
+    socket.onopen = () => {
+        console.log("Connected to Real-time Dashboard");
+        // Reset empty state if it was in error mode
+        const emptyState = document.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.style.display = 'block'; // Ensure it's visible if feed is empty (logic elsewhere might hide it)
+            emptyState.innerHTML = `
+                <span class="material-icons" style="font-size: 48px; margin-bottom: 10px; display: block;">hourglass_empty</span>
+                Waiting for activity...
+            `;
+             // If there are items, hide it immediately
+             if (activityFeed.children.length > 1) { // 1 because of the hidden empty-state div itself? No, empty-state is child.
+                 // Actually, let's just leave it as standard "Waiting" and relies on addFeedItem to hide it if needed.
+                 // But if we are reconnecting, we might already have items.
+                 // So we should only show empty state if there are NO feed items (excluding the empty-state div itself if it's in there).
+                 const feedItems = activityFeed.querySelectorAll('.feed-item');
+                 if (feedItems.length > 0) {
+                     emptyState.style.display = 'none';
+                 }
+            }
+        }
+    };
+
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'event') {
+            addFeedItem(data);
+        } else if (data.type === 'stats') {
+            updateStats(data.data);
+        }
+    };
+
+    socket.onclose = (e) => {
+        console.log("Disconnected from Dashboard. Reconnecting in " + reconnectInterval/1000 + "s...", e);
+        handleConnectionError();
+        setTimeout(connectWebSocket, reconnectInterval);
+    };
+
+    socket.onerror = (err) => {
+        console.error("WebSocket encountered error: ", err, "Closing socket");
+        socket.close();
+    };
+}
+
+function handleConnectionError() {
+    const emptyState = document.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.style.display = 'block';
+        emptyState.style.color = '#d32f2f'; // Red color for error
+        emptyState.innerHTML = `
+            <span class="material-icons" style="font-size: 48px; margin-bottom: 10px; display: block;">error_outline</span>
+            Connection failed. Retrying...
+        `;
     }
-};
+}
 
-socket.onclose = () => {
-    console.log("Disconnected from Dashboard");
-};
+connectWebSocket();
 
 function updateStats(stats) {
     if (document.getElementById('stat-resolution')) 

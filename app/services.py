@@ -65,31 +65,49 @@ Use Markdown code blocks for the JSON.
 """
 
 
-# --- Stats Manager (Mock) ---
+# --- Stats Manager (Real-ish) ---
 class StatsManager:
     def __init__(self):
         self.stats = {
-            "total_chats": 142,
-            "resolved": 134,
-            "time": 45000 * 142,
-            "score": 4.8,
+            "total_interactions": 0,
+            "ai_resolved": 0, # REFUND or APPROVED
+            "escalated": 0,   # ESCALATE
+            "total_time_ms": 0,
+            "satisfaction_score": 4.8, # Mock for now as we don't have user feedback loop yet
         }
 
-    def update(self, ms: float):
-        self.stats["total_chats"] += 1
-        self.stats["time"] += ms
-        if random.random() > 0.1:
-            self.stats["resolved"] += 1
-        self.stats["score"] = max(
-            4.0, min(5.0, self.stats["score"] + random.uniform(-0.1, 0.1))
+    def update(self, ms: float, action_type: str = None):
+        self.stats["total_interactions"] += 1
+        self.stats["total_time_ms"] += ms
+        
+        if action_type in ["REFUND", "APPROVED"]:
+            self.stats["ai_resolved"] += 1
+        elif action_type == "ESCALATE":
+            self.stats["escalated"] += 1
+            
+        # Slight random fluctuation for "aliveness" of score
+        self.stats["satisfaction_score"] = max(
+            4.0, min(5.0, self.stats["satisfaction_score"] + random.uniform(-0.05, 0.05))
         )
 
     def get_stats(self):
-        total = self.stats["total_chats"] or 1
+        total_decisions = self.stats["ai_resolved"] + self.stats["escalated"]
+        resolution_rate = 0
+        if total_decisions > 0:
+            resolution_rate = (self.stats["ai_resolved"] / total_decisions) * 100
+        elif self.stats["total_interactions"] > 0:
+             # Fallback if no decisions made yet (just chat), maybe show 100% or 0%? 
+             # Let's say 100% start
+             resolution_rate = 100
+
+        avg_time = 0
+        if self.stats["total_interactions"] > 0:
+            avg_time = self.stats["total_time_ms"] / self.stats["total_interactions"]
+
         return {
-            "resolution": f"{int(self.stats['resolved']/total * 100)}%",
-            "avg_time": f"{(self.stats['time']/total)/1000:.1f}s",
-            "satisfaction": f"{self.stats['score']:.1f}★",
+            "resolution": f"{int(resolution_rate)}%",
+            "avg_time": f"{avg_time/1000:.1f}s",
+            "satisfaction": f"{self.stats['satisfaction_score']:.1f}★",
         }
 
 
@@ -515,11 +533,12 @@ async def chat_with_agent(
             )
 
         # Action Handling
-        json_match = re.search(r'(\{[\s\S]*"action"[\s\S]*\})', reply)
+        action_type = None
         if json_match:
             try:
                 action_data = json.loads(json_match.group(1))
-                if action_data.get("action") in ["REFUND", "ESCALATE", "REJECT"]:
+                action_type = action_data.get("action")
+                if action_type in ["REFUND", "ESCALATE", "REJECT"]:
                     tid = action_data.get("transaction_id")
                     # ... resolve tid ...
                     if tid and not re.match(r"^[0-9a-f\-]{36}$", tid, re.I):
@@ -533,7 +552,7 @@ async def chat_with_agent(
                         if tx_data:
                             company_id_val = tx_data[0]["company_id"]
 
-                        if action_data["action"] == "REFUND":
+                        if action_type == "REFUND":
                             # 1. Create Refund Queue Entry
                             if tx_data:
                                 create_refund_entry(
@@ -551,7 +570,7 @@ async def chat_with_agent(
                                     transcript=transcript,
                                 )
 
-                        elif action_data["action"] == "ESCALATE":
+                        elif action_type == "ESCALATE":
                             # 1. Create Linked Claim Record (To store context/image)
                             reason_text = action_data.get("reason")
                             if company_id_val:
@@ -570,7 +589,7 @@ async def chat_with_agent(
             except Exception as e:
                 print(f"Action Error: {e}")
 
-        stats_manager.update((time.time() - start_time) * 1000)
+        stats_manager.update((time.time() - start_time) * 1000, action_type)
         return reply
     except Exception as e:
         return f"Brain freeze. {e}"
