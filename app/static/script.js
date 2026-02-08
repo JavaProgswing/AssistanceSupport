@@ -2,7 +2,6 @@ const chatMessages = document.getElementById('chat-messages');
 const userInput = document.getElementById('user-input');
 const fileInput = document.getElementById('image-upload');
 const activityFeed = document.getElementById('activity-feed');
-const companySelect = document.getElementById('company-select');
 
 let chatHistory = []; 
 let currentPolicy = "Standard Policy";
@@ -57,7 +56,6 @@ async function loadCompanyContext() {
         
         // Apply Branding
         document.title = `${company.name} Support`;
-        document.querySelector('.business-info strong').innerText = company.name;
         
         if (company.banner_color) {
             document.documentElement.style.setProperty('--accent-brown', company.banner_color);
@@ -67,10 +65,6 @@ async function loadCompanyContext() {
         // Set Policy
         currentPolicy = company.return_policy;
         companyId = company.id;
-        
-        // Update Select (Read-only for user in this mode)
-        companySelect.innerHTML = `<option>${company.name} Policy (Active)</option>`;
-        
     } catch (e) {
         console.error("Failed to load company", e);
         alert("Company not found. Redirecting to home.");
@@ -200,6 +194,12 @@ function removeMessage(id) {
 }
 
 function addFeedItem(event) {
+    // Hide empty state if present
+    const emptyState = document.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.style.display = 'none';
+    }
+
     const item = document.createElement('div');
     item.classList.add('feed-item');
     item.innerHTML = `
