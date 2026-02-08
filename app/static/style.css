@@ -317,9 +317,10 @@ nav {
     display: flex; /* Ensure flex for centering */
     justify-content: center;
     align-items: center;
+    padding: 0; /* Remove padding that might offset center */
 }
 
-.icon-btn { background: transparent; color: #666; font-size: 1.2rem; }
+.icon-btn { background: transparent; color: #666; }
 .icon-btn:hover { background: #E5E5E5; }
 
 .send-btn {
