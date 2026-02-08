@@ -129,6 +129,11 @@ async def admin_login(req: AdminLoginRequest, response: Response):
         "return_policy": user.get('return_policy') 
     }
 
+@app.post("/api/admin/logout")
+async def admin_logout(response: Response):
+    response.delete_cookie("admin_tagline")
+    return {"status": "success"}
+
 @app.get("/api/admin/claims")
 async def get_claims(company_id: str):
     return get_pending_claims(company_id)
