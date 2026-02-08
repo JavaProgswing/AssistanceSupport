@@ -334,7 +334,31 @@ nav {
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-    .split-view { grid-template-columns: 1fr; }
+    .split-view {
+        display: flex;
+        flex-direction: column-reverse; /* Dashboard on bottom, Chat on top (or vice versa? Let's check user intent. Usually chat is main interaction here, but dashboard shows 'behind scenes'. Let's stack naturally first) */
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .card {
+        height: auto; /* Let content dictate height on mobile */
+        min-height: 500px;
+    }
+
+    .business-dashboard {
+        display: flex; /* Ensure it is visible */
+        order: 2; /* Put dashboard below on mobile so user sees chat first? Or maybe not. Let's keep natural order for now but make it scrollable */
+    }
+    
+    .customer-chat {
+        order: 1;
+        height: 80vh; /* Make chat prominent */
+    }
+
     h1 { font-size: 2.5rem; }
-    .business-dashboard { display: none; } /* Focus on Chat for mobile */
+    
+    nav { padding: 1.5rem; flex-direction: column; gap: 1rem; }
+    .links { margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .links a { margin-left: 0; }
 }

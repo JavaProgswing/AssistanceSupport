@@ -121,7 +121,18 @@
             font-size: 12px;
             font-weight: bold;
         }
+
+        @media (max-width: 768px) {
+            .container { width: auto; margin: 10px; }
+            .header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .header button { align-self: flex-end; }
+            .card { padding: 15px; }
+            .tabs { overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+            h1 { font-size: 1.5rem; }
+            #login-section { padding: 20px; }
+        }
     </style>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
 </head>
 <body>
 
