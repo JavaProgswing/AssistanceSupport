@@ -67,7 +67,7 @@ nav {
 
 .logo {
     font-weight: 600;
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -88,9 +88,10 @@ nav {
 .btn-black {
     background: #1A1A1A;
     color: white !important;
-    padding: 0.8rem 1.5rem;
+    padding: 1rem 2rem;
     border-radius: 2rem;
     transition: transform 0.2s;
+    font-size: 1.1rem;
 }
 
 .btn-black:hover {
